@@ -1,163 +1,91 @@
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const port = process.env.PORT || 3000;
 
-const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Health</title>
-  <style>
-    /* Hide the sections initially */
-    #connectionSection, #processSection {
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <h1>Insert JSON data</h1>
-  <textarea id="jsonInput" rows="30" cols="100" placeholder='Enter JSON object or array of objects'></textarea><br>
-  <button onclick="compute()">Show connectors</button>
-
-  <div id="connectionSection">
-    <h3>Connection Names:</h3>
-    <select id="connectionSelect" onchange="showProcesses()">
-      <option value="">&lt;select a connection&gt;</option>
-    </select>
-  </div>
-
-  <div id="processSection">
-    <h3>Related Process Names:</h3>
-    <div id="processNames"></div>
-  </div>
-
-  <pre id="output"></pre>
-
-  <script>
-    let currentData = null; // Store parsed JSON
-    let connectionNames = [];
-
-    function compute() {
-      const input = document.getElementById('jsonInput').value;
-      const output = document.getElementById('output');
-      const select = document.getElementById('connectionSelect');
-      const processDiv = document.getElementById('processNames');
-      const connectionSection = document.getElementById('connectionSection');
-      const processSection = document.getElementById('processSection');
-
-      output.textContent = '';
-      processDiv.textContent = '';
-      currentData = null;
-      connectionNames = [];
-
-      // Hide sections initially until valid data is found
-      connectionSection.style.display = 'none';
-      processSection.style.display = 'none';
-
-      try {
-        const data = JSON.parse(input);
-        let obj = null;
-
-        if (Array.isArray(data)) {
-          obj = data[0];
-        } else if (typeof data === 'object' && data !== null) {
-          obj = data;
-        } else {
-          output.textContent = 'Please enter a valid JSON object or array of objects.';
-          return;
-        }
-        currentData = obj;
-
-        if (!obj.ScheduledProcesses || !Array.isArray(obj.ScheduledProcesses)) {
-          output.textContent = 'JSON missing ScheduledProcesses array.';
-          return;
-        }
-
-        // Collect unique connectionNames
-        const namesSet = new Set();
-        obj.ScheduledProcesses.forEach(proc => {
-          if (proc.Connectors && Array.isArray(proc.Connectors)) {
-            proc.Connectors.forEach(conn => {
-              if (conn.connectionName && typeof conn.connectionName === 'string') {
-                namesSet.add(conn.connectionName.trim());
-              }
-            });
-          }
-        });
-
-        connectionNames = Array.from(namesSet).sort((a,b) => a.localeCompare(b));
-
-        if(connectionNames.length === 0) {
-          output.textContent = 'No connection names found.';
-          return;
-        }
-
-        // Add numbered options with empty top option
-        select.innerHTML = '<option value="">&lt;select a connection&gt;</option>' + 
-          connectionNames
-            .map((name, index) => \`<option value="\${name}">\${index + 1}. \${name}</option>\`)
-            .join('');
-
-        // Show the connection dropdown section now that data is loaded
-        connectionSection.style.display = 'block';
-        processSection.style.display = 'none'; // keep process section hidden until selection
-      } catch (e) {
-        output.textContent = 'Invalid JSON: ' + e.message;
-      }
-    }
-
-    function showProcesses() {
-      const select = document.getElementById('connectionSelect');
-      const processDiv = document.getElementById('processNames');
-      const processSection = document.getElementById('processSection');
-      processDiv.textContent = '';
-
-      if (!currentData) return;
-
-      const selectedName = select.value.trim();
-      if (!selectedName) {
-        processSection.style.display = 'none';
-        return;
-      }
-
-      if (!currentData.ScheduledProcesses || !Array.isArray(currentData.ScheduledProcesses)) return;
-
-      const matchingProcesses = [];
-
-      currentData.ScheduledProcesses.forEach(proc => {
-        if (!proc.Connectors || !Array.isArray(proc.Connectors)) return;
-
-        const match = proc.Connectors.some(conn => {
-          return (
-            conn.connectionName &&
-            conn.connectionName.trim() === selectedName
-          );
-        });
-
-        if (match) {
-          matchingProcesses.push(proc.ProcessName || '(no ProcessName)');
-        }
-      });
-
-      if (matchingProcesses.length === 0) {
-        processDiv.textContent = 'No ProcessName found for selected connector.';
-        processSection.style.display = 'block';
-        return;
-      }
-
-      const uniqueProcesses = [...new Set(matchingProcesses)];
-      // Use <ol> for numbered list instead of <ul>
-      processDiv.innerHTML = '<ol>' + uniqueProcesses.map(p => '<li>' + p + '</li>').join('') + '</ol>';
-      processSection.style.display = 'block';
-    }
-  </script>
-</body>
-</html>
-`;
+const azureStorageUrl = 'https://storagejoeri.blob.core.windows.net/dgjoeri/waardes.csv';
 
 const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end(html);
+  if (req.method === 'GET') {
+    let recordsToShow = 25; // Default number of records to show
+    if (req.url.includes('/show')) {
+      const requestedRecords = req.url.split('/show')[1];
+      if (requestedRecords === '25' || requestedRecords === '50' || requestedRecords === '100' || requestedRecords === '250' || requestedRecords === '500' || requestedRecords === '1000' || requestedRecords === '2500' || requestedRecords === '5000') {
+        recordsToShow = parseInt(requestedRecords);
+      }
+    }
+
+    // Fetch and display the contents of waardes.csv
+    https.get(azureStorageUrl, (response) => {
+      let data = '';
+      response.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      response.on('end', () => {
+        const lines = data.trim().split(',');
+        const values = lines.map((line) => {
+          const [date, value] = line.split(':');
+          return {
+            date: date,
+            value: value,
+          };
+        });
+
+        const latestValues = values.slice(-recordsToShow); // Select the latest records
+
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html');
+        res.write('<html><body>');
+
+        // Buttons to choose the number of records to display
+        res.write(`<button onclick="window.location.href='/show25'">Show 25 records</button>`);
+        res.write(`<button onclick="window.location.href='/show50'">Show 50 records</button>`);
+        res.write(`<button onclick="window.location.href='/show100'">Show 100 records</button>`);
+        res.write(`<button onclick="window.location.href='/show250'">Show 250 records</button>`);
+        res.write(`<button onclick="window.location.href='/show500'">Show 500 records</button>`);
+        res.write(`<button onclick="window.location.href='/show1000'">Show 1000 records</button>`);
+        res.write(`<button onclick="window.location.href='/show2500'">Show 2500 records</button>`);
+        res.write(`<button onclick="window.location.href='/show5000'">Show 5000 records</button>`);
+
+        // Create a canvas for the chart
+        res.write('<canvas id="myChart" width="400" height="200"></canvas>');
+
+        // Generate the chart using Chart.js
+        res.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>');
+        res.write('<script>');
+        res.write('var ctx = document.getElementById("myChart").getContext("2d");');
+        res.write('var labels = ' + JSON.stringify(latestValues.map((line) => line.date)) + ';');
+        res.write('var data = ' + JSON.stringify(latestValues.map((line) => line.value)) + ';');
+        res.write('var myChart = new Chart(ctx, {');
+        res.write('type: "line",');
+        res.write('data: {');
+        res.write('labels: labels,');
+        res.write('datasets: [{');
+        res.write('label: "Values",');
+        res.write('data: data,');
+        res.write('backgroundColor: "rgba(75, 192, 192, 0.2)",');
+        res.write('borderColor: "rgba(75, 192, 192, 1)",');
+        res.write('borderWidth: 1');
+        res.write('}]');
+        res.write('},');
+        res.write('options: {');
+        res.write('scales: {');
+        res.write('y: {');
+        res.write('beginAtZero: true');
+        res.write('}');
+        res.write('}');
+        res.write('}');
+        res.write('});');
+        res.write('</script>');
+
+        res.write('</body></html>');
+        res.end();
+      });
+    });
+  }
 });
 
-server.listen(3000, () => {
-  console.log('Server running at http://localhost:3000');
+server.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}/`);
 });
