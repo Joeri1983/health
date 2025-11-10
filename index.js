@@ -4,7 +4,7 @@ const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Boomi - Connection/Process relations</title>
+  <title>Health</title>
   <style>
     /* Hide the sections initially */
     #connectionSection, #processSection {
