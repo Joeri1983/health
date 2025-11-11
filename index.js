@@ -1,7 +1,7 @@
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 
 const azureStorageUrl = 'https://storagejoeri.blob.core.windows.net/dgjoeri/activity.csv';
 
@@ -15,7 +15,7 @@ const server = http.createServer((req, res) => {
       }
     }
 
-    // Fetch and display the contents of waardes.csv
+    // Fetch and display the contents of activity.csv
     https.get(azureStorageUrl, (response) => {
       let data = '';
       response.on('data', (chunk) => {
