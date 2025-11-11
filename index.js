@@ -5,7 +5,7 @@ const https = require('https');
 const fs = require('fs');
 const port = process.env.PORT || 4000
 
-const azureStorageUrl = 'https://storagejoeri.blob.core.windows.net/dgjoeri/activity.csv';
+const azureStorageUrl = 'https://storagejoeri.blob.core.windows.net/dgjoeri/waardes.csv';
 
 const server = http.createServer((req, res) => {
   if (req.method === 'GET') {
