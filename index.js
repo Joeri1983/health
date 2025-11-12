@@ -43,10 +43,6 @@ const server = http.createServer((req, res) => {
         res.write(`<button onclick="window.location.href='/show50'">Show 50 records</button>`);
         res.write(`<button onclick="window.location.href='/show100'">Show 100 records</button>`);
         res.write(`<button onclick="window.location.href='/show250'">Show 250 records</button>`);
-        res.write(`<button onclick="window.location.href='/show500'">Show 500 records</button>`);
-        res.write(`<button onclick="window.location.href='/show1000'">Show 1000 records</button>`);
-        res.write(`<button onclick="window.location.href='/show2500'">Show 2500 records</button>`);
-        res.write(`<button onclick="window.location.href='/show5000'">Show 5000 records</button>`);
 
         // Create a canvas for the chart
         res.write('<canvas id="myChart" width="400" height="200"></canvas>');
