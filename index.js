@@ -3,7 +3,7 @@ const https = require('https');
 const port = process.env.PORT || 3000;
 
 // Public Google Sheets CSV URL
-const googleSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzRTmxloVZW-y1Pi9VymHwqbGOxihjdextEHECKiXar7dokw9dSBGvHqCDXnDUuW68J7i0xe99cgv5/pubhtml';
+const googleSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzRTmxloVZW-y1Pi9VymHwqbGOxihjdextEHECKiXar7dokw9dSBGvHqCDXnDUuW68J7i0xe99cgv5/pub?output=csv';
 
 const server = http.createServer((req, res) => {
   if (req.method === 'GET') {
@@ -20,11 +20,11 @@ const server = http.createServer((req, res) => {
       let data = '';
       response.on('data', chunk => { data += chunk; });
       response.on('end', () => {
-        // Split CSV lines and parse date/value
+        // Split CSV lines and parse column A as date, column B as value
         const lines = data.trim().split('\n');
         const values = lines.map(line => {
           const [date, value] = line.split(',');
-          return { date, value };
+          return { date: date.trim(), value: parseFloat(value.trim()) };
         });
 
         const latestValues = values.slice(-recordsToShow);
