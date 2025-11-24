@@ -3,7 +3,7 @@ const https = require('https');
 const port = process.env.PORT || 3000;
 
 // Public Google Sheets CSV URL
-const googleSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzRTmxloVZW-y1Pi9VymHwqbGOxihjdextEHECKiXar7dokw9dSBGvHqCDXnDUuW68J7i0xe99cgv5/pub?output=csv';
+const googleSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzRTmxloVZW-y1Pi9VymHwqbGOxihjdextEHECKiXar7dokw9dSBGvHqCDXnDUuW68J7i0xe99cgv5/pubhtml';
 
 const server = http.createServer((req, res) => {
   if (req.method === 'GET') {
